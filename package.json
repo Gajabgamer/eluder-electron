@@ -17,14 +17,18 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
-      "target": [{"target": "dmg", "arch": ["x64", "arm64"]}],
+      "target": [
+        {"target": "zip", "arch": ["x64", "arm64"]},
+        {"target": "dmg", "arch": ["x64", "arm64"]}
+      ],
       "extendInfo": {
         "NSScreenCaptureUsageDescription": "Eluder needs screen access for screenshot features."
       }
     },
     "win": {
       "icon": "assets/icon.ico",
-      "target": [{"target": "portable", "arch": ["x64"]}]
+      "target": [{"target": "portable", "arch": ["x64"]}],
+      "signAndEditExecutable": false
     },
     "dmg": {
       "title": "Eluder Installer",

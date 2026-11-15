@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-mac:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
@@ -19,15 +19,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Mac DMG
+      - name: Build Mac App & Packages
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --mac --x64 --arm64
 
-      - name: Upload Mac DMG to release
+      - name: Upload Mac build to release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.dmg
+          tag_name: v1.0
+          files: |
+            dist/*.dmg
+            dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
