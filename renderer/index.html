@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; frame-src *; connect-src *; img-src * data: blob:;"/>
+<title>Eluder</title>
+<style>
+  :root {
+    --bg:      rgba(13,13,13,0.95);
+    --bar:     rgba(16,16,16,0.98);
+    --border:  #222;
+    --green:   #32CD32;
+    --text:    #ccc;
+    --muted:   #555;
+    --radius:  10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  #topBar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: var(--bar);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  #topBar > * { -webkit-app-region: no-drag; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+          animation: pulse 1.6s ease-in-out infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .app-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--green); }
+
+  /* provider dropdown */
+  #providerSelect {
+    background: #111; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-size: 12px; padding: 5px 8px; cursor: pointer; outline: none;
+    margin-left: 4px;
+  }
+  #providerSelect:hover { border-color: #444; }
+
+  /* nav buttons */
+  .nav-btn {
+    background: none; border: 1px solid transparent; border-radius: 5px;
+    color: var(--muted); font-size: 13px; cursor: pointer; padding: 4px 8px;
+    transition: all .15s;
+  }
+  .nav-btn:hover { color: var(--text); background: #1a1a1a; border-color: var(--border); }
+
+  /* opacity slider */
+  .slider-wrap { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+  .slider-wrap label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  #opacitySlider {
+    width: 70px; accent-color: var(--green); cursor: pointer;
+    -webkit-app-region: no-drag;
+  }
+
+  /* window controls */
+  .win-btn {
+    background: none; border: none; color: var(--muted); font-size: 15px;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: all .15s;
+  }
+  .win-btn:hover { background: #1a1a1a; color: var(--text); }
+  .win-btn.close:hover { background: #2a0a0a; color: #cc3333; }
+  .spacer { flex: 1; }
+
+  /* ── BODY ROW ── */
+  #bodyRow {
+    flex: 1; display: flex; overflow: hidden; min-height: 0;
+  }
+
+  /* ── WEBVIEW ── */
+  #webviewWrap {
+    flex: 1; position: relative; overflow: hidden; min-width: 0;
+  }
+  webview {
+    width: 100%; height: 100%; border: none;
+    background: #fff;
+  }
+
+  /* ── SCREENSHOT SIDEBAR ── */
+  #sidebar {
+    width: 160px; flex-shrink: 0;
+    background: #0d0d0d;
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #sidebar.hidden { display: none; }
+  #sidebarHeader {
+    padding: 8px 10px; font-size: 10px; color: var(--muted);
+    letter-spacing: 1px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #sidebarHeader button {
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px;
+  }
+  #screenshotList {
+    flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px;
+  }
+  #screenshotList::-webkit-scrollbar { width: 4px; }
+  #screenshotList::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  .ss-thumb {
+    width: 100%; border-radius: 4px; border: 1px solid var(--border); cursor: pointer;
+    transition: border-color .15s; display: block;
+  }
+  .ss-thumb:hover { border-color: var(--green); }
+  .ss-empty { color: var(--muted); font-size: 11px; text-align: center; padding: 20px 10px; }
+
+  /* ── BOTTOM BAR ── */
+  #bottomBar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px;
+    background: var(--bar);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .action-btn {
+    background: #111; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--muted); font-size: 12px; cursor: pointer; padding: 5px 10px;
+    transition: all .15s; white-space: nowrap;
+  }
+  .action-btn:hover { color: var(--text); border-color: #444; background: #1a1a1a; }
+  .action-btn.active { color: var(--green); border-color: var(--green); background: #0a1f0a; }
+
+  /* countdown overlay */
+  #countdown {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px;
+  }
+  #countdown.show { display: flex; }
+  #countNum { font-size: 72px; font-weight: 900; color: var(--green);
+               text-shadow: 0 0 40px rgba(50,205,50,.6); }
+  #countLabel { font-size: 13px; color: var(--muted); }
+  #cancelCount {
+    background: #1a0a0a; border: 1px solid #cc3333; color: #cc3333;
+    border-radius: 6px; padding: 8px 20px; font-size: 13px; cursor: pointer; margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topBar">
+  <div class="dot"></div>
+  <span class="app-title">ELUDER</span>
+
+  <select id="providerSelect" onchange="switchProvider(this.value)">
+    <option value="chatgpt">ChatGPT</option>
+    <option value="claude">Claude</option>
+    <option value="gemini">Gemini</option>
+    <option value="deepseek">DeepSeek</option>
+  </select>
+
+  <button class="nav-btn" onclick="navBack()" title="Back">◀</button>
+  <button class="nav-btn" onclick="navForward()" title="Forward">▶</button>
+  <button class="nav-btn" onclick="navReload()" title="Reload">↻</button>
+
+  <div class="slider-wrap">
+    <label>OPACITY</label>
+    <input type="range" id="opacitySlider" min="10" max="100" value="100"
+      oninput="setOpacity(this.value)"/>
+  </div>
+
+  <div class="spacer"></div>
+
+  <button class="win-btn" onclick="window.eluder.minimize()" title="Minimise">─</button>
+  <button class="win-btn close" onclick="window.eluder.closeMain()" title="Close">✕</button>
+</div>
+
+<!-- BODY ROW -->
+<div id="bodyRow">
+
+  <!-- WEBVIEW -->
+  <div id="webviewWrap">
+    <webview id="wv" src="https://chatgpt.com"
+      allowpopups
+      useragent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36">
+    </webview>
+  </div>
+
+  <!-- SCREENSHOT SIDEBAR -->
+  <div id="sidebar" class="hidden">
+    <div id="sidebarHeader">
+      <span>SCREENSHOTS</span>
+      <button onclick="clearScreenshots()" title="Clear">🗑</button>
+    </div>
+    <div id="screenshotList">
+      <div class="ss-empty">No screenshots yet</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottomBar">
+  <button class="action-btn" id="btnCapture" onclick="captureScreen()">📷 Screenshot</button>
+  <button class="action-btn" id="btnSidebar" onclick="toggleSidebar()">🖼 Sidebar</button>
+  <button class="action-btn" id="btnAutoType" onclick="startAutoType()">⌨ Auto-Type</button>
+  <button class="action-btn" onclick="clearChat()">🗑 Clear</button>
+  <div class="spacer"></div>
+  <span style="font-size:10px;color:var(--muted);" id="statusText">Ready</span>
+</div>
+
+<!-- COUNTDOWN OVERLAY -->
+<div id="countdown">
+  <div id="countNum">3</div>
+  <div id="countLabel">Auto-typing in…</div>
+  <button id="cancelCount" onclick="cancelAutoType()">✕ Cancel</button>
+</div>
+
+<script>
+const PROVIDERS = {
+  chatgpt:  'https://chatgpt.com',
+  claude:   'https://claude.ai',
+  gemini:   'https://gemini.google.com',
+  deepseek: 'https://chat.deepseek.com',
+};
+
+let screenshots   = [];
+let sidebarOpen   = false;
+let autoTypeCancelled = false;
+let countdownTimer = null;
+
+const wv = document.getElementById('wv');
+
+// ── Provider switch ───────────────────────────────────────────────────────
+function switchProvider(key) {
+  wv.src = PROVIDERS[key] || PROVIDERS.chatgpt;
+  setStatus(`Switched to ${key}`);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+function navBack()    { wv.goBack();    }
+function navForward() { wv.goForward(); }
+function navReload()  { wv.reload();    }
+
+// ── Opacity ───────────────────────────────────────────────────────────────
+function setOpacity(val) {
+  window.eluder.setOpacity(val / 100);
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('hidden', !sidebarOpen);
+  document.getElementById('btnSidebar').classList.toggle('active', sidebarOpen);
+}
+
+// ── Screenshot ────────────────────────────────────────────────────────────
+async function captureScreen() {
+  setStatus('Capturing…');
+  const dataUrl = await window.eluder.takeScreenshot();
+  if (!dataUrl) { setStatus('Screenshot failed'); return; }
+
+  screenshots.unshift(dataUrl);
+  if (screenshots.length > 20) screenshots.pop();
+  renderSidebar();
+
+  if (!sidebarOpen) toggleSidebar();
+  setStatus('Screenshot taken');
+}
+
+function renderSidebar() {
+  const list = document.getElementById('screenshotList');
+  if (!screenshots.length) {
+    list.innerHTML = '<div class="ss-empty">No screenshots yet</div>';
+    return;
+  }
+  list.innerHTML = screenshots.map((s, i) =>
+    `<img class="ss-thumb" src="${s}" title="Click to send to AI"
+       onclick="sendScreenshotToAI(${i})" draggable="true"
+       ondragstart="dragScreenshot(event, ${i})"/>`
+  ).join('');
+}
+
+function clearScreenshots() {
+  screenshots = [];
+  renderSidebar();
+}
+
+function sendScreenshotToAI(i) {
+  // Inject image as file drop into the webview (not supported directly)
+  // Instead, open it in a new window so user can drag manually
+  const w = window.open();
+  w.document.write(`<img src="${screenshots[i]}" style="max-width:100%;"/>`);
+}
+
+function dragScreenshot(e, i) {
+  e.dataTransfer.setData('text/plain', screenshots[i]);
+}
+
+// ── Auto-Type ─────────────────────────────────────────────────────────────
+function startAutoType() {
+  const text = prompt('Text to auto-type into the AI chat:');
+  if (!text) return;
+
+  autoTypeCancelled = false;
+  let count = 3;
+  document.getElementById('countNum').textContent = count;
+  document.getElementById('countdown').classList.add('show');
+
+  countdownTimer = setInterval(async () => {
+    count--;
+    if (autoTypeCancelled) {
+      clearInterval(countdownTimer);
+      document.getElementById('countdown').classList.remove('show');
+      return;
+    }
+    if (count > 0) {
+      document.getElementById('countNum').textContent = count;
+    } else {
+      clearInterval(countdownTimer);
+      document.getElementById('countdown').classList.remove('show');
+      await typeIntoWebview(text);
+    }
+  }, 1000);
+}
+
+function cancelAutoType() {
+  autoTypeCancelled = true;
+  if (countdownTimer) clearInterval(countdownTimer);
+  document.getElementById('countdown').classList.remove('show');
+}
+
+async function typeIntoWebview(text) {
+  setStatus('Auto-typing…');
+  // Insert text via JS into the active focused input in the webview
+  const escaped = text.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$');
+  const js = `
+    (function(){
+      const el = document.activeElement ||
+                 document.querySelector('textarea, [contenteditable="true"], input[type="text"]');
+      if (!el) return 'no-element';
+      if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value') ||
+                             Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+        if (nativeSetter && nativeSetter.set) {
+          nativeSetter.set.call(el, el.value + \`${escaped}\`);
+          el.dispatchEvent(new Event('input', {bubbles:true}));
+        } else {
+          el.value += \`${escaped}\`;
+        }
+      } else {
+        el.textContent += \`${escaped}\`;
+        el.dispatchEvent(new InputEvent('input', {bubbles:true, data:\`${escaped}\`}));
+      }
+      return 'ok';
+    })()
+  `;
+  try {
+    const result = await wv.executeJavaScript(js);
+    setStatus(result === 'ok' ? 'Text inserted ✓' : 'Click the chat input first, then try again');
+  } catch (e) {
+    setStatus('Auto-type error: ' + e.message);
+  }
+}
+
+// ── Clear chat ────────────────────────────────────────────────────────────
+function clearChat() {
+  if (confirm('Reload the current AI page? (clears the chat)')) navReload();
+}
+
+// ── Status ────────────────────────────────────────────────────────────────
+function setStatus(msg) {
+  document.getElementById('statusText').textContent = msg;
+  setTimeout(() => {
+    if (document.getElementById('statusText').textContent === msg)
+      document.getElementById('statusText').textContent = 'Ready';
+  }, 3000);
+}
+
+// ── Keyboard shortcuts (local) ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.altKey && e.key === 'S') captureScreen();
+  if (e.altKey && e.key === 'T') startAutoType();
+  if (e.altKey && e.key === 'B') toggleSidebar();
+  if (e.altKey && e.key === 'r') navReload();
+  if (e.key === 'Escape' && document.getElementById('countdown').classList.contains('show'))
+    cancelAutoType();
+});
+</script>
+</body>
+</html>

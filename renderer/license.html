@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'"/>
+<title>Eluder — Activate</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: rgba(14,14,14,0.96);
+    color: #ddd;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #2a2a2a;
+    -webkit-app-region: drag;
+  }
+  /* title bar */
+  .titlebar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px;
+    background: #111;
+    border-bottom: 1px solid #222;
+    flex-shrink: 0;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #32CD32;
+         animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .titlebar h1 { font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #eee; }
+  .close-btn {
+    margin-left: auto; background: none; border: none; color: #555;
+    font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+    -webkit-app-region: no-drag;
+  }
+  .close-btn:hover { color: #cc3333; background: #1a0a0a; }
+  /* content */
+  .content {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 36px;
+    -webkit-app-region: no-drag;
+  }
+  .logo { font-size: 28px; font-weight: 800; letter-spacing: 4px; color: #32CD32;
+           text-shadow: 0 0 20px rgba(50,205,50,.4); margin-bottom: 6px; }
+  .sub { font-size: 11px; color: #555; letter-spacing: 1px; margin-bottom: 32px; }
+  label { font-size: 11px; color: #666; align-self: flex-start; margin-bottom: 6px; letter-spacing: .5px; }
+  input {
+    width: 100%; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px;
+    color: #32CD32; font-family: 'Consolas', 'SF Mono', monospace; font-size: 13px;
+    padding: 12px 16px; outline: none; transition: border-color .2s; margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+  input:focus { border-color: #32CD32; box-shadow: 0 0 0 2px rgba(50,205,50,.1); }
+  input::placeholder { color: #333; letter-spacing: 0; }
+  .btn-activate {
+    width: 100%; padding: 13px; background: #1a4d1a; border: 1px solid #32CD32;
+    border-radius: 8px; color: #32CD32; font-size: 14px; font-weight: 700;
+    letter-spacing: 1px; cursor: pointer; transition: all .15s;
+  }
+  .btn-activate:hover:not(:disabled) { background: #235c23; box-shadow: 0 0 12px rgba(50,205,50,.2); }
+  .btn-activate:disabled { opacity: .5; cursor: default; }
+  .status {
+    margin-top: 14px; font-size: 12px; min-height: 20px;
+    text-align: center; border-radius: 6px; padding: 8px 12px;
+    display: none; width: 100%;
+  }
+  .status.ok  { display: block; background: #0a1f0a; color: #32CD32; border: 1px solid #32CD32; }
+  .status.err { display: block; background: #1a0a0a; color: #cc3333; border: 1px solid #cc3333; }
+  .status.info{ display: block; background: #111; color: #888; border: 1px solid #333; }
+  .tg-btn {
+    display: none; margin-top: 10px; width: 100%; padding: 10px;
+    background: #0a1a2a; border: 1px solid #2255aa; border-radius: 8px;
+    color: #4488ee; font-size: 12px; cursor: pointer;
+  }
+  .tg-btn:hover { background: #0d1f33; }
+</style>
+</head>
+<body>
+<div class="titlebar">
+  <div class="dot"></div>
+  <h1>ELUDER</h1>
+  <button class="close-btn" onclick="window.eluder.quit()">✕</button>
+</div>
+<div class="content">
+  <div class="logo">ELUDER</div>
+  <div class="sub">AI OVERLAY · LICENSE ACTIVATION</div>
+  <label>ACCESS TOKEN</label>
+  <input id="tokenInput" type="text" placeholder="ELDR-XXXXXXXXXXXXXXXXXXXXXXXX"
+    autocomplete="off" spellcheck="false"
+    onkeydown="if(event.key==='Enter') activate()"/>
+  <button class="btn-activate" id="btn" onclick="activate()">ACTIVATE</button>
+  <div class="status" id="status"></div>
+  <button class="tg-btn" id="tgBtn" onclick="window.eluder.openTelegram()">
+    📱 Contact @Hackerseb on Telegram to reset device
+  </button>
+</div>
+
+<script>
+async function activate() {
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) { showStatus('Please enter your token.', 'err'); return; }
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = 'VALIDATING…';
+  showStatus('Connecting to license server…', 'info');
+  document.getElementById('tgBtn').style.display = 'none';
+
+  const result = await window.eluder.validateToken(token);
+  if (result.ok) {
+    showStatus('✓ Activated — launching Eluder…', 'ok');
+    setTimeout(() => window.eluder.licenseOk(), 900);
+  } else {
+    showStatus('✗ ' + result.message, 'err');
+    btn.disabled = false;
+    btn.textContent = 'ACTIVATE';
+    if (result.message.includes('different device')) {
+      document.getElementById('tgBtn').style.display = 'block';
+    }
+  }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+</script>
+</body>
+</html>

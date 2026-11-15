@@ -1,0 +1,42 @@
+{
+  "name": "eluder",
+  "version": "1.0.0",
+  "description": "Eluder — AI Overlay for Mac & Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac --arm64 --x64",
+    "build:win": "electron-builder --win --x64",
+    "build:all": "electron-builder --mac --win --x64"
+  },
+  "build": {
+    "appId": "com.eluder.app",
+    "productName": "Eluder",
+    "asar": true,
+    "files": ["main.js", "preload.js", "renderer/**/*", "assets/**/*"],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [{"target": "dmg", "arch": ["x64", "arm64"]}],
+      "extendInfo": {
+        "NSScreenCaptureUsageDescription": "Eluder needs screen access for screenshot features."
+      }
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [{"target": "portable", "arch": ["x64"]}]
+    },
+    "dmg": {
+      "title": "Eluder Installer",
+      "background": null,
+      "window": {"width": 540, "height": 380}
+    }
+  },
+  "dependencies": {
+    "node-machine-id": "^1.1.12"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}
